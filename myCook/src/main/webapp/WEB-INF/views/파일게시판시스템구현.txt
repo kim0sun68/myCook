@@ -1,0 +1,147 @@
+40 > ourStudy > 통합구현 > 파일게시판시스템구현.txt
+
+-.주제 : 파일업로드게시판
+-.요구사항
+  -필수구현기능
+  사용자는 게시판의 글을 조회할 수 있어야 한다.
+  회원은    게시판에 글을 입력,수정,삭제 할 수 있어야 한다.
+  글입력화면 : (글쓴이), 제목,내용,비밀번호, 첨부파일
+			첨부파일의 수는 최대 3개로 제한
+  자신의 글에 한해서 수정, 삭제 할 수 있어야 한다.
+  글을 삭제하기 위해서는 글의 비밀번호와 일치해야만 삭제할 수 있다.
+
+ -부가구현기능
+  파일다운로드
+  검색
+
+  -공통모듈
+   (인터셉터)LoginChk.java
+    com.ourDo.util > FileUtil.java
+     com.ourDo.util >PageUtil.java
+
+-.DB설계
+   - spring/spring
+
+DROP TABLE  board;
+
+--게시판글 정보
+CREATE TABLE  board(
+	b_No 		number(5),		/*글번호*/
+	b_writer		varchar2(100),	/*작성자*/
+	b_title		varchar2(200),	/*제목*/
+	b_content	clob,			/*내용*/
+	b_wdate  	date,			/*작성일-SYSDATE	*/
+	b_pw		varchar2(30),		/*비밀번호*/
+	b_hit		number(4),		/*조회수- 0(기본값)	*/
+	b_show		number(1)		 /*노출여부-	노출:1(기본값)		비노출:0*/
+);   
+
+INSERT   INTO   board   VALUES(  1, 'hongid', '제목1', '내용1', SYSDATE, '1234', 0, 1 );
+INSERT   INTO   board   VALUES(  2, 'hongid', '제목2', '내용2', SYSDATE, '1234', 0, 1 );
+INSERT   INTO   board   VALUES(  3, 'kimid',   '제목3', '내용3', SYSDATE, '1234', 0, 1 );
+COMMIT;
+
+
+DROP TABLE  fileInfo;
+
+--첨부파일 정보
+create table   fileInfo(
+	f_no			number(5),	  /*첨부파일번호*/
+	f_oriBNo		number(5),	  /*원글번호*/
+	f_name		varchar2(200), /*파일명*/
+	f_saveName	varchar2(600), /*저장파일명*/
+	f_path		varchar2(200), /*파일이 저장된 경로*/
+	f_size		number(12)	 /*파일크기*/
+);   
+
+
+-.화면설계 
+
+-.요청설계
+   com> ourDo > controller > BoardController.java 
+==>> com.ourDo.controller.Controller.java
+   com> ourDo > service > BoardService.java  
+   com> ourDo > dao >       BoardDAO.java 
+   com> ourDo > sql >         boardSQL.xml    
+    com> ourDo > dto>        BoardDTO.java  
+    com> ourDo > mybatis> myBatis-config.xml   
+
+
+요청내용  http://localhost:9000/app/board/~~.do
+컨트롤러  com.ourDo.controller.BoardController.java
+요첨함수  함수명()
+파라미터  
+View         /WEB-INF/views/board/ ~~~.jsp
+
+1. 글목록조회
+	요청내용  http://localhost:9000/app/board/list.do?nowPage=
+	컨트롤러  com.ourDo.controller.BoardController.java
+	요첨함수  list()
+	파라미터   nowPage=보고싶은페이지(선택)
+	View         /WEB-INF/views/board/list.jsp
+
+2.글쓰기
+2-1. 글쓰기폼 보기
+	요청내용  http://localhost:9000/app/board/writeFrm.do
+	컨트롤러  com.ourDo.controller.BoardController.java
+	요첨함수  writeFrm()
+	파라미터  
+	View         /WEB-INF/views/board/writeFrm.jsp
+
+2-2. 글쓰기처리 
+	요청내용  http://localhost:9000/app/board/writeProc.do
+	컨트롤러  com.ourDo.controller.BoardController.java
+	요첨함수  writeProc()
+	파라미터  (글쓴이)
+			=제목
+			=내용
+			=비밀번호
+			첨부파일(첨부파일의 수는 최대 3개로 제한)
+	View       RedirectView 목록보기  http://localhost:9000/app/board/list.do
+
+3.상세조회
+3-1.조회수증가
+	요청내용  http://localhost:9000/app/board/hitUp.do
+	컨트롤러  com.ourDo.controller.BoardController.java
+	요첨함수  hitUp()
+	파라미터  oriNo=글번호
+	                  nowPage=보고싶은페이지(선택)   //릴레이용
+	View        RedirectView  상세보기 http://localhost:9000/app/board/detail.do
+
+3-2.상세조회
+	요청내용  http://localhost:9000/app/board/detail.do
+	컨트롤러  com.ourDo.controller.BoardController.java
+	요첨함수  boardDetail()
+	파라미터  oriNo=글번호
+	                   nowPage=보고싶은페이지
+	View         /WEB-INF/views/board/boardDetail.jsp
+
+
+4.수정
+4-1.수정폼 보기
+	요청내용  http://localhost:9000/app/board/modifyFrm.do
+	컨트롤러  com.ourDo.controller.BoardController.java
+	요첨함수  modifyFrm()
+	파라미터  oriNo=글번호
+			  nowPage=보고싶은페이지  //릴레이용	
+	View         /WEB-INF/views/board/modifyFrm.jsp
+
+4-2.수정처리  http://localhost:9000/app/board/modifyFrm.do
+	요청내용  http://localhost:9000/app/board/modifyProc.do
+	컨트롤러  com.ourDo.controller.BoardController.java
+	요첨함수  modifyProc()
+	파라미터  oriNo=글번호
+	                   nowPage=보고싶은페이지  //릴레이용
+	View          RedirectView  상세보기 http://localhost:9000/app/board/detail.do
+
+
+5.삭제
+	요청내용  http://localhost:9000/app/board/del.do
+	컨트롤러  com.ourDo.controller.BoardController.java
+	요첨함수  delBoard()
+	파라미터  oriNo=글번호
+	View          RedirectView  목록보기   http://localhost:9000/app/board/list.do
+
+
+
+
